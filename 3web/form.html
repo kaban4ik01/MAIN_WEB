@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Форма</title>
+	<link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>Форма</h1>
+    
+    <div class="form-container">
+        <form action="index.php" method="post">
+            <div class="form-group">
+                <label for="fullname">ФИО:</label>
+                <input type="text" id="fullname" name="fullname" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="phone">Телефон:</label>
+                <input type="tel" id="phone" name="phone" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="email">E-mail:</label>
+                <input type="email" id="email" name="email" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="birthdate">Дата рождения:</label>
+                <input type="date" id="birthdate" name="birthdate" required>
+            </div>
+            
+            <div class="form-group">
+                <label>Пол:</label>
+                <div class="radio-group">
+                    <div class="radio-option">
+                        <input type="radio" id="male" name="gender" value="male" required>
+                        <label for="male">Мужской</label>
+                    </div>
+                    <div class="radio-option">
+                        <input type="radio" id="female" name="gender" value="female">
+                        <label for="female">Женский</label>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="languages">Любимый язык программирования:</label>
+                <select id="languages" name="languages[]" multiple required>
+                    <option value="1">Pascal</option>
+                    <option value="2">C</option>
+                    <option value="3">C++</option>
+                    <option value="4">JavaScript</option>
+                    <option value="5">PHP</option>
+                    <option value="6">Python</option>
+                    <option value="7">Java</option>
+                    <option value="8">Haskel</option>
+                    <option value="9">Clojure</option>
+                    <option value="10">Prolog</option>
+                    <option value="11">Scala</option>
+                    <option value="12ы">Go</option>
+                </select>
+                <small>Для множественного выбора удерживайте Ctrl (Windows)</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="bio">Биография:</label>
+                <textarea id="bio" name="bio"></textarea>
+            </div>
+            
+            <div class="form-group">
+                <div class="checkbox-group">
+                    <div class="checkbox-option">
+                        <input type="checkbox" id="contract_" name="contract_" required>
+                        <label for="contract">С контрактом ознакомлен(а)</label>
+                    </div>
+                </div>
+            </div>
+            
+            <button type="submit">Сохранить</button>
+        </form>
+    </div>
+    
+    <footer>
+        <p>© Кулик Д.А. Группа 27/2</p>
+    </footer>
+</body>
+</html>
