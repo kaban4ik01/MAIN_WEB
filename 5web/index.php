@@ -3,7 +3,6 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-ob_start();
 header('Content-Type: text/html; charset=UTF-8');
 
 $db_host = 'localhost';
@@ -23,26 +22,52 @@ $values = [
     'languages' => []
 ];
 
-if ($_SERVER['REQUEST_METHOD'] == 'GET') {
-    foreach ($values as $key => &$value) {
-        if (isset($_COOKIE[$key.'_value'])) {
-            $value = $key === 'contract_' 
-                ? (bool)$_COOKIE[$key.'_value']
-                : $_COOKIE[$key.'_value'];
+
+if (!empty($_SESSION['user_id'])) {
+    try {
+        $pdo = new PDO("mysql:host=$db_host;dbname=$db_name;charset=utf8", $db_user, $db_pass);
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+        $stmt = $pdo->prepare("SELECT a.* FROM applications a 
+                              JOIN users u ON a.id = u.application_id 
+                              WHERE u.id = ?");
+        $stmt->execute([$_SESSION['user_id']]);
+        $app_data = $stmt->fetch();
+        
+        if ($app_data) {
+            $stmt = $pdo->prepare("SELECT language_id FROM application_languages 
+                                  WHERE application_id = ?");
+            $stmt->execute([$app_data['id']]);
+            $langs = $stmt->fetchAll(PDO::FETCH_COLUMN);
+            
+            $values = [
+                'fullname' => $app_data['fullname'],
+                'phone' => $app_data['phone'],
+                'email' => $app_data['email'],
+                'birthdate' => $app_data['birthdate'],
+                'gender' => $app_data['gender'],
+                'bio' => $app_data['bio'],
+                'contract_' => (bool)$app_data['contract_'],
+                'languages' => $langs
+            ];
+            
+            $_SESSION['form_data'] = $values;
         }
+    } catch (PDOException $e) {
+       
     }
-    
-    if (isset($_COOKIE['languages_value'])) {
-        $values['languages'] = explode(',', $_COOKIE['languages_value']);
-    }
-    
+}
+
+if ($_SERVER['REQUEST_METHOD'] == 'GET') {
     include('form.php');
     exit();
 }
 
+
 $values = $_POST;
 $values['languages'] = $_POST['languages'] ?? [];
 $values['contract_'] = isset($_POST['contract_']);
+
 
 $validation_failed = false;
 
@@ -84,10 +109,6 @@ if (!$values['contract_']) {
 }
 
 if ($validation_failed) {
-    foreach ($values as $key => $value) {
-        setcookie($key.'_value', is_array($value) ? implode(',', $value) : $value, time() + 3600, '/');
-    }
-    
     $_SESSION['errors'] = $errors;
     $_SESSION['form_data'] = $values;
     header('Location: index.php');
@@ -98,39 +119,71 @@ try {
     $pdo = new PDO("mysql:host=$db_host;dbname=$db_name;charset=utf8", $db_user, $db_pass);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-    $stmt = $pdo->prepare("INSERT INTO applications (full_name, phone, email, birth_date, gender, biography, contract_agreed) 
-                          VALUES (?, ?, ?, ?, ?, ?, ?)");
-    $stmt->execute([
-        $values['fullname'],
-        $values['phone'],
-        $values['email'],
-        $values['birthdate'],
-        $values['gender'],
-        $values['bio'],
-        $values['contract_'] ? 1 : 0
-    ]);
-    
-    $app_id = $pdo->lastInsertId();
-    
-    $stmt = $pdo->prepare("INSERT INTO application_languages (application_id, language_id) VALUES (?, ?)");
-    foreach ($values['languages'] as $lang_id) {
-        $stmt->execute([$app_id, $lang_id]);
-    }
-    
-    $login = 'user_' . substr(md5(time()), 0, 8);
-    $password = substr(md5(uniqid()), 0, 8);
-    $password_hash = password_hash($password, PASSWORD_DEFAULT);
-    
-    $stmt = $pdo->prepare("INSERT INTO users (login, password, application_id) VALUES (?, ?, ?)");
-    $stmt->execute([$login, $password_hash, $app_id]);
-    
-    $_SESSION['generated_credentials'] = [
-        'login' => $login,
-        'password' => $password
-    ];
-    
-    foreach ($values as $key => $value) {
-        setcookie($key.'_value', '', time() - 3600, '/');
+    if (!empty($_SESSION['user_id']) && isset($_POST['update'])) {
+       
+        $stmt = $pdo->prepare("UPDATE applications SET 
+                              fullname = ?, phone = ?, email = ?, 
+                              birthdate = ?, gender = ?, bio = ?, 
+                              contract_ = ? 
+                              WHERE id = (SELECT application_id FROM users WHERE id = ?)");
+        $stmt->execute([
+            $values['fullname'],
+            $values['phone'],
+            $values['email'],
+            $values['birthdate'],
+            $values['gender'],
+            $values['bio'],
+            $values['contract_'] ? 1 : 0,
+            $_SESSION['user_id']
+        ]);
+        
+        $stmt = $pdo->prepare("DELETE FROM application_languages 
+                              WHERE application_id = (SELECT application_id FROM users WHERE id = ?)");
+        $stmt->execute([$_SESSION['user_id']]);
+        
+        $stmt = $pdo->prepare("INSERT INTO application_languages (application_id, language_id) 
+                              VALUES ((SELECT application_id FROM users WHERE id = ?), ?)");
+        foreach ($values['languages'] as $lang_id) {
+            $stmt->execute([$_SESSION['user_id'], $lang_id]);
+        }
+        
+        $_SESSION['update_success'] = true;
+    } else {
+       
+        $stmt = $pdo->prepare("INSERT INTO applications (fullname, phone, email, birthdate, gender, bio, contract_) 
+                              VALUES (?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([
+            $values['fullname'],
+            $values['phone'],
+            $values['email'],
+            $values['birthdate'],
+            $values['gender'],
+            $values['bio'],
+            $values['contract_'] ? 1 : 0
+        ]);
+        
+        $app_id = $pdo->lastInsertId();
+        
+        $stmt = $pdo->prepare("INSERT INTO application_languages (application_id, language_id) VALUES (?, ?)");
+        foreach ($values['languages'] as $lang_id) {
+            $stmt->execute([$app_id, $lang_id]);
+        }
+        
+        if (empty($_SESSION['user_id'])) {
+            $login = 'user_' . substr(md5(time()), 0, 8);
+            $password = substr(md5(uniqid()), 0, 8);
+            $password_hash = password_hash($password, PASSWORD_DEFAULT);
+            
+            $stmt = $pdo->prepare("INSERT INTO users (login, password, application_id) VALUES (?, ?, ?)");
+            $stmt->execute([$login, $password_hash, $app_id]);
+            
+            $_SESSION['login'] = $login;
+            $_SESSION['user_id'] = $pdo->lastInsertId();
+            $_SESSION['generated_credentials'] = [
+                'login' => $login,
+                'password' => $password
+            ];
+        }
     }
     
     header("Location: index.php");

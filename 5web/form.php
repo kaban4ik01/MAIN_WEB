@@ -18,6 +18,8 @@ try {
 } catch (PDOException $e) {
     $languages = [];
 }
+
+$is_edit_mode = !empty($login);
 ?>
 <!DOCTYPE html>
 <html lang="ru">
@@ -25,7 +27,6 @@ try {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Форма</title>
-    <link rel="stylesheet" href="../3web/style.css">
     <style>
     body {
         font-family: Arial, sans-serif;
@@ -40,20 +41,20 @@ try {
         min-height: 100vh;
     }
 
-    .login-form {
+    .form-container {
         background-color: #379683;
         border-radius: 10px;
         padding: 30px;
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
         width: 80%;
-        max-width: 400px;
+        max-width: 600px;
         margin-bottom: 30px;
     }
 
-    .login-form h2 {
-        color: #EDF5E1;
-        margin-top: 0;
+    h1 {
+        color: #05386B;
         text-align: center;
+        margin-bottom: 20px;
     }
 
     .form-group {
@@ -68,13 +69,27 @@ try {
     }
 
     input[type="text"],
-    input[type="password"] {
+    input[type="tel"],
+    input[type="email"],
+    input[type="date"],
+    input[type="password"],
+    select,
+    textarea {
         width: 100%;
         padding: 10px;
         border: 1px solid #5CDB95;
         border-radius: 5px;
         background-color: #EDF5E1;
         box-sizing: border-box;
+    }
+
+    select[multiple] {
+        height: 120px;
+    }
+
+    textarea {
+        min-height: 100px;
+        resize: vertical;
     }
 
     button {
@@ -101,13 +116,68 @@ try {
     }
 
     .error {
+        border-color: #ff6b6b;
+    }
+
+    .error-message {
         color: #ff6b6b;
-        background-color: #fff;
+        font-size: 0.8em;
+        margin-top: 5px;
+    }
+
+    .credentials {
+        background-color: #5CDB95;
+        padding: 15px;
+        margin-bottom: 20px;
+        border-radius: 5px;
+        color: #05386B;
+    }
+
+    .credentials h3 {
+        margin-top: 0;
+        color: #05386B;
+    }
+
+    .success-message {
+        color: #379683;
+        background-color: #8EE4AF;
         padding: 10px;
         border-radius: 5px;
         margin-bottom: 15px;
         text-align: center;
         font-weight: bold;
+    }
+
+    .radio-group {
+        display: flex;
+        gap: 20px;
+    }
+
+    .radio-option {
+        display: flex;
+        align-items: center;
+    }
+
+    .radio-option input[type="radio"] {
+        width: auto;
+        margin-right: 8px;
+    }
+
+    .checkbox-container {
+        display: flex;
+        align-items: center;
+    }
+
+    .checkbox-container input[type="checkbox"] {
+        width: auto;
+        margin-right: 8px;
+    }
+
+    small {
+        display: block;
+        margin-top: 5px;
+        font-size: 0.8em;
+        color: #EDF5E1;
     }
 
     footer {
@@ -124,16 +194,31 @@ try {
         margin: 0;
         font-size: 14px;
     }
-</style>
+
+    a {
+        color: #5CDB95;
+        text-decoration: none;
+        font-weight: bold;
+    }
+
+    a:hover {
+        text-decoration: underline;
+    }
+    </style>
 </head>
 <body>
-    <h1>Форма</h1>
-
     <div class="form-container">
+        <h1>Форма</h1>
+
         <?php if (!empty($login)): ?>
             <p>Вы вошли как: <?= htmlspecialchars($login) ?> (<a href="login.php?action=logout">Выйти</a>)</p>
         <?php else: ?>
             <p><a href="login.php">Войти</a></p>
+        <?php endif; ?>
+
+        <?php if (!empty($_SESSION['update_success'])): ?>
+            <div class="success-message">Данные успешно обновлены!</div>
+            <?php unset($_SESSION['update_success']); ?>
         <?php endif; ?>
 
         <?php if (!empty($generated_credentials)): ?>
@@ -145,8 +230,12 @@ try {
         <?php endif; ?>
 
         <form method="POST" action="index.php">
-            <div class="form-group">
-                <label for="fullname">ФИО:</label>
+            <?php if ($is_edit_mode): ?>
+                <input type="hidden" name="update" value="1">
+            <?php endif; ?>
+
+            <div class="form-group">    
+                <label for="fullname">ФИО*</label>
                 <input type="text" id="fullname" name="fullname" 
                        value="<?= htmlspecialchars($values['fullname'] ?? '') ?>"
                        class="<?= !empty($errors['fullname']) ? 'error' : '' ?>" required>
@@ -156,7 +245,7 @@ try {
             </div>
 
             <div class="form-group">
-                <label for="phone">Телефон:</label>
+                <label for="phone">Телефон*</label>
                 <input type="tel" id="phone" name="phone" 
                        value="<?= htmlspecialchars($values['phone'] ?? '') ?>"
                        class="<?= !empty($errors['phone']) ? 'error' : '' ?>" required>
@@ -166,7 +255,7 @@ try {
             </div>
 
             <div class="form-group">
-                <label for="email">Email:</label>
+                <label for="email">Email*</label>
                 <input type="email" id="email" name="email" 
                        value="<?= htmlspecialchars($values['email'] ?? '') ?>"
                        class="<?= !empty($errors['email']) ? 'error' : '' ?>" required>
@@ -176,7 +265,7 @@ try {
             </div>
 
             <div class="form-group">
-                <label for="birthdate">Дата рождения:</label>
+                <label for="birthdate">Дата рождения*</label>
                 <input type="date" id="birthdate" name="birthdate" 
                        value="<?= htmlspecialchars($values['birthdate'] ?? '') ?>"
                        class="<?= !empty($errors['birthdate']) ? 'error' : '' ?>" required>
@@ -186,7 +275,7 @@ try {
             </div>
 
             <div class="form-group">
-                <label>Пол:</label>
+                <label>Пол*</label>
                 <div class="radio-group">
                     <div class="radio-option">
                         <input type="radio" id="male" name="gender" value="male"
@@ -205,7 +294,7 @@ try {
             </div>
 
             <div class="form-group">
-                <label for="languages">Любимые языки программирования:</label>
+                <label for="languages">Языки программирования*</label>
                 <select id="languages" name="languages[]" multiple 
                         class="<?= !empty($errors['languages']) ? 'error' : '' ?>" required>
                     <?php foreach ($languages as $lang): ?>
@@ -215,14 +304,14 @@ try {
                         </option>
                     <?php endforeach; ?>
                 </select>
-                <small>Для множественного выбора удерживайте Ctrl (Windows)</small>
+                <small>Для множественного выбора удерживайте Ctrl (Windows) или Command (Mac)</small>
                 <?php if (!empty($errors['languages'])): ?>
                     <div class="error-message">Выберите хотя бы один язык</div>
                 <?php endif; ?>
             </div>
 
             <div class="form-group">
-                <label for="bio">Биография:</label>
+                <label for="bio">Биография</label>
                 <textarea id="bio" name="bio"><?= htmlspecialchars($values['bio'] ?? '') ?></textarea>
             </div>
 
@@ -230,7 +319,7 @@ try {
                 <div class="checkbox-container">
                     <input type="checkbox" id="contract_" name="contract_" value="1"
                            <?= ($values['contract_'] ?? false) ? 'checked' : '' ?> required>
-                    <label for="contract_">С контрактом ознакомлен(а)</label>
+                    <label for="contract_">С контрактом ознакомлен(а)*</label>
                 </div>
                 <?php if (!empty($errors['contract_'])): ?>
                     <div class="error-message">Необходимо подтвердить ознакомление</div>
@@ -238,7 +327,7 @@ try {
             </div>
 
             <div class="form-group">
-                <button type="submit">Сохранить</button>
+                <button type="submit"><?= $is_edit_mode ? 'Обновить данные' : 'Отправить' ?></button>
             </div>
         </form>
     </div>
@@ -248,5 +337,5 @@ try {
 </body>
 </html>
 <?php
-unset($_SESSION['errors'], $_SESSION['generated_credentials']);
+unset($_SESSION['errors'], $_SESSION['generated_credentials'], $_SESSION['form_data']);
 ?>
